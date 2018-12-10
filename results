@@ -1,0 +1,45 @@
+using smoothing 0.8 & assume test set have the same distribution with train&dev set:
+no_preprocessed                                             score_dev       score in test
+max_q_len:25
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=10000        0.          0.661
+--dp_keep_prob 0.5 --ratio_1_0 1 & n_iteration=8000         0.          0.658
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=7000         0.          0.667
+
+max_q_len:32
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=9000         0.          0.661
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=7000         0.          0.668
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=7300         0.          0.643
+
+preprocessed
+max_q_len:25
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=7200         0.          0.666
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=7000         0.          0.660
+--dp_keep_prob 0.2 --ratio_1_0 1 & n_iteration=9000         0.
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=10700        0.          0.666
+
+max_q_len:32
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=7600         0.          0.669
+--dp_keep_prob 0.2 --ratio_1_0 1 & n_iteration=13700        0.          0.652
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=9500         0.          0.665
+
+preprocessed without random_vec
+mex_q_len:25
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=7300         0.          0.667
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=6700         0.          0.662
+
+max_q_len:35
+--dp_keep_prob 0.8 --ratio_1_0 1 & n_iteration=8400         0.          0.659
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=8300         0.          0.665
+--dp_keep_prob 0.2 --ratio_1_0 1 & n_iteration=10000        0.          0.638
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=8200         0.          0.669
+
+preprocessed_to_link_slash_rectify
+max_q_len:25
+--dp_keep_prob 0.8 --ratio_1_0 2 & n_iteration=5300         0.6805      0.664
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=10000        0.6866      0.646
+--dp_keep_prob 0.2 --ratio_1_0 1 & n_iteration=13000        0.6789      0.652
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=10000        0.6878      0.664
+
+max_q_len:50
+--dp_keep_prob 0.5 --ratio_1_0 2 & n_iteration=7100         0.6864      0.670
+--dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=8100         0.6767      0.666
