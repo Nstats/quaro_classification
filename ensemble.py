@@ -3,45 +3,116 @@ import tensorflow.contrib as tc
 from nltk.tokenize import word_tokenize
 import numpy as np
 import pandas as pd
+import time
+import re
 
 batch_size = 512
-q_max_len = 32
-n_iteration_list = [7300, 7000, 9000]
+q_max_len_dict = [25, 25, 25]
+n_iteration_list = [5, 5, 5]
 word_vec_len = 300
 rnn_hidden_size = 150
 rnn_layer_num = 2
 MLP_hidden_layer = 150
-dp_keep_prob_train_list = [0.2, 0.5, 0.8]
+dp_keep_prob_train_list = [0.8, 0.8, 0.8]
 ratio_1_0 = 2
 dev_size = 20000
-n_train = 3
+n_train = len(n_iteration_list)
 
-train_dir = '../input/train.csv'
-test_dir = '../input/test.csv'
-embedding_dir = '../input/embeddings/glove.840B.300d/glove.840B.300d.txt'
+train_dir = './data/train_example.csv'
+test_dir = './data/test_example.csv'
+embedding_dir = './data/glove.840B.300d_example.txt'
 
 
-def preprocessing():
-    train_df = pd.DataFrame(pd.read_csv(train_dir, engine='python'))
-    train_df['question_text'] = [word_tokenize(line) for line in train_df['question_text'].fillna('').values]
-    train_df = train_df.sample(frac=1.0)
-    dev_df = train_df[:dev_size]
-    train_df = train_df[dev_size:]
-    df_target_1 = train_df[train_df['target'] == 1]
-    for i in range(ratio_1_0 - 1):
-        train_df = train_df.append(df_target_1)
-    train_df = train_df.sample(frac=1.0)
+rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
+                "Qur'an": 'Quoran', 'etc…': 'etc', 'Unacademy': 'unacademic', 'Quorans': 'Quoran',
+
+                'colour': 'color', 'centre': 'center', 'favourite': 'favorite',
+                'travelling': 'traveling', 'counselling': 'counseling', 'theatre': 'theater',
+                'cancelled': 'canceled', 'labour': 'labor', 'organisation': 'organization',
+                'wwii': 'world war 2', 'citicise': 'criticize', 'youtu ': 'youtube ', 'Qoura': 'Quora',
+                'sallary': 'salary', 'Whta': 'What', 'narcisist': 'narcissist', 'howdo': 'how do',
+                'whatare': 'what are', 'howcan': 'how can', 'howmuch': 'how much',
+                'howmany': 'how many', 'whydo': 'why do', 'doI': 'do I', 'theBest': 'the best',
+                'howdoes': 'how does', 'mastrubation': 'masturbation', 'mastrubate': 'masturbate',
+                "mastrubating": 'masturbating', 'pennis': 'penis', 'Etherium': 'Ethereum',
+                'narcissit': 'narcissist', 'bigdata': 'big data', '2k17': '2017', '2k18': '2018',
+                'qouta': 'quota', 'exboyfriend': 'ex boyfriend', 'airhostess': 'air hostess',
+                "whst": 'what', 'watsapp': 'whatsapp', 'demonitisation': 'demonetization',
+                'demonitization': 'demonetization', 'demonetisation': 'demonetization'
+                }
+
+
+def remove_link_and_slash_split(sen):
+    regex_link = r'(http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?'
+    regex_slash_3 = r'[a-zA-Z]{3,}/[a-zA-Z]{3,}/[a-zA-Z]{3,}'
+    regex_slash_2 = r'[a-zA-Z]{3,}/[a-zA-Z]{3,}'
+    sen, number = re.subn(regex_link, ' link ', sen)
+    result = re.findall(regex_slash_3, sen, re.S)
+    for word in result:
+        new_word = word.replace('/', ' / ')
+        sen = sen.replace(word, new_word)
+    result = re.findall(regex_slash_2, sen, re.S)
+    for word in result:
+        new_word = word.replace('/', ' / ')
+        sen = sen.replace(word, new_word)
+    return sen
+
+
+def remove_formula(sen):
+    for i in range(100):
+        judge1 = '[math]' in sen and '[/math]' in sen
+        judge2 = '[math]' in sen and '[\math]'in sen
+        judge3 = '[math]' in sen and '[math]'in sen.replace('[math]', '', 1)
+        if judge1 or judge2:
+            index1 = sen.find('[math]')
+            index2 = max(sen.find('[\math]'), sen.find('[/math]'))+7
+            (index1, index2) = (min(index1, index2), max(index1, index2))
+            sen = sen.replace(sen[index1: index2], ' formula ')
+        elif judge3:
+            index1 = sen.find('[math]')
+            index2 = sen.replace('[math]', '      ', 1).find('[math]') + 6
+            sen = sen.replace(sen[index1: index2], ' formula ')
+        else:
+            break
+    return sen
+
+
+def preprocessing(file_dir, rectify, train_or_dev=True):
+    df = pd.DataFrame(pd.read_csv(file_dir, engine='python'))
+    size = df.shape[0]
+    question_text = df['question_text'].fillna('').values
+    for i in range(size):
+        sen = remove_formula(question_text[i])
+        sen2 = remove_link_and_slash_split(sen)
+        question_text[i] = sen2
+    question_text = [word_tokenize(line) for line in question_text]
+    for i in range(size):
+        for word in question_text[i]:
+            if word in rectify:
+                index = question_text[i].index(word)
+                question_text[i][index] = rectify.get(word)
+    df['question_text'] = question_text
+    if train_or_dev:
+        df = df.sample(frac=1.0)
+        dev_df = df[:dev_size]
+        train_df = df[dev_size:]
+        df_target_1 = train_df[train_df['target'] == 1]
+        for i in range(ratio_1_0-1):
+            train_df = train_df.append(df_target_1)
+        train_df = train_df.sample(frac=1.0)
+    else:
+        train_df = df
+        dev_df = None
     return train_df, dev_df
 
 
 def get_embedding_index(emb_dir):
     def get_coefs(word, *arr): return word, np.asarray(arr, dtype='float32')
-
     embedding_index = dict(get_coefs(*line.split(" ")) for line in open(emb_dir))
     return embedding_index
 
 
-def get_batch_data(train_df, batch_size, embedding_index, train_or_dev=True):
+def get_batch_data(train_df, q_max_len, batch_size, embedding_index, train_or_dev=True):
     if train_or_dev == True:
         train_df_batch = train_df.sample(n=batch_size)
     else:
@@ -63,6 +134,7 @@ def get_batch_data(train_df, batch_size, embedding_index, train_or_dev=True):
                 break
     x = zeros
     return x, x_valid, y
+
 
 
 def get_cell(rnn_type, hidden_size, scope, layer_num, dp_keep_prob, training):
@@ -105,7 +177,7 @@ def softmax_to_pred(softmax, thereshold):
     return pred
 
 
-def model(nth_train, train, embedding, test, test_num, dp_prob, iteration):
+def model(nth_train, train, q_max_len, embedding, test, test_num, dp_prob, iteration):
     # Building the whole model structure, training and testing.
     with tf.variable_scope('prepare_data' + str(nth_train)):
         train_states = tf.placeholder(dtype=tf.bool)
@@ -143,7 +215,7 @@ def model(nth_train, train, embedding, test, test_num, dp_prob, iteration):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(iteration):
-            x, x_valid, y = get_batch_data(train, batch_size, embedding)
+            x, x_valid, y = get_batch_data(train, q_max_len, batch_size, embedding)
             _ = sess.run(optimizer,
                          feed_dict={X: x, X_valid: x_valid, Y: y, train_states: True})
         print('training done.')
@@ -152,7 +224,7 @@ def model(nth_train, train, embedding, test, test_num, dp_prob, iteration):
         softmax_prediction = np.asarray([0.0, 0.0], dtype=np.float32)
         for i in range(int(1e10)):
             df = test.iloc[i * 100:(i + 1) * 100]
-            x_test, x_valid_test, y_test = get_batch_data(df, int(df.shape[0]), embedding, False)
+            x_test, x_valid_test, y_test = get_batch_data(df, q_max_len, int(df.shape[0]), embedding, False)
             softmax_outputs_ = sess.run(softmax_outputs,
                                         feed_dict={X: x_test, X_valid: x_valid_test, train_states: False})
             softmax_prediction = np.vstack((softmax_prediction, softmax_outputs_))
@@ -163,18 +235,18 @@ def model(nth_train, train, embedding, test, test_num, dp_prob, iteration):
 
 
 def main():
-    train_df = preprocessing()
+    train_df, dev_df = preprocessing(train_dir, rectify_dict)
     embedding_index = get_embedding_index(embedding_dir)
 
-    df_test = pd.DataFrame(pd.read_csv(test_dir, engine='python'))
-    df_test['question_text'] = [word_tokenize(line) for line in df_test['question_text'].fillna('').values]
+    df_test, _ = preprocessing(test_dir, rectify_dict, False)
     test_size = df_test.shape[0]
 
     prediction = np.zeros([test_size, 2])
     for n in range(n_train):
         n_iteration = n_iteration_list[n]
+        q_max_len = q_max_len_dict[n]
         dp_keep_prob_train = dp_keep_prob_train_list[n]
-        softmax_prediction = model(n, train_df, embedding_index, df_test, test_size, dp_keep_prob_train, n_iteration)
+        softmax_prediction = model(n, train_df, q_max_len, embedding_index, df_test, test_size, dp_keep_prob_train, n_iteration)
         prediction += softmax_prediction
     prediction /= n_train
 
