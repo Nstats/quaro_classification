@@ -129,8 +129,6 @@ def get_batch_data(train_df, batch_size, embedding_index, train_or_dev=True):
             if word in embedding_index:
                 zeros[n, x_valid[n], :] = embedding_index.get(word)
                 x_valid[n] += 1
-            else:
-                pass
             if x_valid[n] >= q_max_len:
                 break
     x = zeros

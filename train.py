@@ -158,10 +158,6 @@ def get_batch_data(train_df, batch_size, embedding_index, train_or_dev=True):
             # elif word in assign_to_variable:
             #     zeros[n, x_valid[n], :] += assign_to_variable.get(word)
             #     x_valid[n] += 1
-            else:
-                pass
-                # zeros[n, x_valid[n], :] = assign_to_variable.get('random_vec')
-                # x_valid[n] += 1
             if x_valid[n] >= FLAGS.q_max_len:
                 break
     x = zeros
