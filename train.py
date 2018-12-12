@@ -102,11 +102,8 @@ def remove_formula(sen):
 def preprocessing(file_dir, rectify, train_or_dev=True):
     df = pd.DataFrame(pd.read_csv(file_dir, engine='python'))
     size = df.shape[0]
-    question_text = df['question_text'].fillna('').values
-    for i in range(size):
-        sen = remove_formula(question_text[i])
-        sen2 = remove_link_and_slash_split(sen)
-        question_text[i] = sen2
+    question_text = df['question_text'].fillna('').values.apply(
+        lambda x: remove_link_and_slash_split(remove_formula(x)))
     question_text = [word_tokenize(line) for line in question_text]
     for i in range(size):
         for word in question_text[i]:
