@@ -15,10 +15,11 @@ rnn_hidden_size = 150
 rnn_layer_num = 2
 MLP_hidden_layer = 150
 dev_size = 20000
+lr = 5e-5
 
-tf.flags.DEFINE_integer('q_max_len', 25, 'question max valid length')
-tf.flags.DEFINE_float('dp_keep_prob', 1.0, 'df_keep_prob')
-tf.flags.DEFINE_integer('ratio_1_0', 1, 'label_1*ratio_1_0 : label_0 in training set')
+tf.flags.DEFINE_integer('q_max_len', 50, 'question max valid length')
+tf.flags.DEFINE_float('dp_keep_prob', 0.2, 'df_keep_prob')
+tf.flags.DEFINE_integer('ratio_1_0', 2, 'label_1*ratio_1_0 : label_0 in training set')
 FLAGS = tf.flags.FLAGS
 
 train_dir = './data/train.csv'
@@ -26,7 +27,7 @@ test_dir = './data/test.csv'
 embedding_dir = './data/glove.840B.300d.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
-    './tensorboard/preprocessed_to_link_slash_rectify/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr0.001_dp_prob'+str(FLAGS.dp_keep_prob)+'_ratio1_0_'+str(FLAGS.ratio_1_0)
+    './tensorboard/preprocessed_to_link_slash_rectify/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr5e-5_dp_prob'+str(FLAGS.dp_keep_prob)+'_ratio1_0_'+str(FLAGS.ratio_1_0)
 
 
 rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
@@ -298,7 +299,7 @@ def main(_):
 
     recall, precision, accu, f1 = score(logits=logits3, targets=Y)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.stop_gradient(Y), logits=logits3))
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
 
     with tf.name_scope('summaries'):
         train_recall = tf.summary.scalar('train_recall', recall)
