@@ -15,7 +15,8 @@ rnn_hidden_size = 150
 rnn_layer_num = 2
 MLP_hidden_layer = 150
 dev_size = 20000
-lr = 5e-5
+# lr = 5e-5
+lr = 0.001
 
 tf.flags.DEFINE_integer('q_max_len', 50, 'question max valid length')
 tf.flags.DEFINE_float('dp_keep_prob', 0.2, 'df_keep_prob')
@@ -27,7 +28,8 @@ test_dir = './data/test.csv'
 embedding_dir = './data/glove.840B.300d.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
-    './tensorboard/preprocessed_to_link_slash_rectify/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr5e-5_dp_prob'+str(FLAGS.dp_keep_prob)+'_ratio1_0_'+str(FLAGS.ratio_1_0)
+    './tensorboard/preprocessed/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr5e-5_dp_prob'+str(FLAGS.dp_keep_prob)\
+    + '_ratio1_0_'+str(FLAGS.ratio_1_0)
 
 
 rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
@@ -103,8 +105,8 @@ def remove_formula(sen):
 def preprocessing(file_dir, rectify, train_or_dev=True):
     df = pd.DataFrame(pd.read_csv(file_dir, engine='python'))
     size = df.shape[0]
-    question_text = df['question_text'].fillna('').values.apply(
-        lambda x: remove_link_and_slash_split(remove_formula(x)))
+    question_text = df['question_text'].fillna('').apply(
+        lambda x: remove_link_and_slash_split(remove_formula(x))).values
     question_text = [word_tokenize(line) for line in question_text]
     for i in range(size):
         for word in question_text[i]:
