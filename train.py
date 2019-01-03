@@ -22,9 +22,9 @@ tf.flags.DEFINE_float('dp_keep_prob', 0.2, 'df_keep_prob')
 tf.flags.DEFINE_integer('ratio_1_0', 2, 'label_1*ratio_1_0 : label_0 in training set')
 FLAGS = tf.flags.FLAGS
 
-train_dir = './data/train.csv'
+train_dir = './data/train_example.csv'
 test_dir = './data/test.csv'
-embedding_dir = './data/glove.840B.300d.txt'
+embedding_dir = './data/glove.840B.300d_example.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
     './tensorboard/preprocessed_to_link_slash_rectify/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr5e-5_dp_prob'+str(FLAGS.dp_keep_prob)+'_ratio1_0_'+str(FLAGS.ratio_1_0)
@@ -311,7 +311,7 @@ def main(_):
     merged_train = tf.summary.merge([train_recall, train_precision, train_f1, train_loss])
     merged_dev = tf.summary.merge([dev_recall, dev_precision, dev_f1, dev_loss])
     time_before_sess = time.time()
-    print('Now build sess.')
+    print('Now build session.')
 
     with tf.Session() as sess:
         summary_writer = tf.summary.FileWriter(tensorboard_log_dir, sess.graph)
