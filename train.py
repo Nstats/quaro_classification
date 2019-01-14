@@ -27,8 +27,7 @@ test_dir = './data/test.csv'
 embedding_dir = './data/glove.840B.300d_example.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
-    './tensorboard/preprocessed/ql'+str(FLAGS.q_max_len)+'_bs512_h150_lr5e-5_dp_prob'+str(FLAGS.dp_keep_prob)\
-    + '_ratio1_0_'+str(FLAGS.ratio_1_0)
+    './tensorboard/CNN/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)+'_lr'+str(FLAGS.lr)
 
 
 rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
