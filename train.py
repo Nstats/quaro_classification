@@ -292,7 +292,7 @@ def main(_):
         h_pool = tf.concat(pooled_outputs, 3)
         h_pool_flat = tf.reshape(h_pool, [-1, num_filters_total])
         # dropout
-        h_drop = tf.nn.dropout(h_pool_flat, FLAGS.dp_keep_prob_train)
+        h_drop = tf.nn.dropout(h_pool_flat, FLAGS.dp_keep_prob)
 
     '''
     with tf.variable_scope('self_attention'):
