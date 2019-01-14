@@ -9,7 +9,7 @@ import re
 start_time = time.time()
 
 batch_size = 512
-n_iteration = 20000
+n_iteration = 15000
 word_vec_len = 300
 rnn_hidden_size = 150
 rnn_layer_num = 2
