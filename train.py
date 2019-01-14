@@ -15,12 +15,11 @@ rnn_hidden_size = 150
 rnn_layer_num = 2
 MLP_hidden_layer = 150
 dev_size = 20000
-# lr = 5e-5
-lr = 0.001
 
 tf.flags.DEFINE_integer('q_max_len', 50, 'question max valid length')
 tf.flags.DEFINE_float('dp_keep_prob', 0.2, 'df_keep_prob')
 tf.flags.DEFINE_integer('ratio_1_0', 2, 'label_1*ratio_1_0 : label_0 in training set')
+tf.flags.DEFINE_float('lr', 0.001, 'learning rate')
 FLAGS = tf.flags.FLAGS
 
 train_dir = './data/train_example.csv'
@@ -327,7 +326,7 @@ def main(_):
 
     recall, precision, accu, f1 = score(logits=logits3, targets=Y)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.stop_gradient(Y), logits=logits3))
-    optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.lr).minimize(loss)
 
     with tf.name_scope('summaries'):
         train_recall = tf.summary.scalar('train_recall', recall)
