@@ -22,9 +22,9 @@ tf.flags.DEFINE_integer('ratio_1_0', 2, 'label_1*ratio_1_0 : label_0 in training
 tf.flags.DEFINE_float('lr', 0.001, 'learning rate')
 FLAGS = tf.flags.FLAGS
 
-train_dir = './data/train_example.csv'
+train_dir = './data/train.csv'
 test_dir = './data/test.csv'
-embedding_dir = './data/glove.840B.300d_example.txt'
+embedding_dir = './data/glove.840B.300d.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
     './tensorboard/CNN/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)+'_lr'+str(FLAGS.lr)
@@ -266,7 +266,6 @@ def main(_):
         # states:((fw[None, rnn_hidden_size]*2), (bw[None, rnn_hidden_size]*2))
         # outputs = tf.concat(outputs, 2)  # [None, FLAGS.q_max_len, 2*rnn_hidden_size]
         useful_states = tf.concat((states[0][-1], states[1][-1]), -1)  # [None, 2*rnn_hidden_size]
-        
     '''
 
     with tf.variable_scope('CNN_encoder'):
@@ -293,6 +292,7 @@ def main(_):
         h_pool_flat = tf.reshape(h_pool, [-1, num_filters_total])
         # dropout
         h_drop = tf.nn.dropout(h_pool_flat, FLAGS.dp_keep_prob)
+
 
     '''
     with tf.variable_scope('self_attention'):
@@ -347,6 +347,7 @@ def main(_):
         sess.run(tf.global_variables_initializer())
 
         for i in range(n_iteration):
+            print('Now train iteration {0}'.format(i+1))
             x, x_valid, y = get_batch_data(train_df, batch_size, embedding_index)
             _ = sess.run(optimizer,
                          feed_dict={X: x, X_valid: x_valid, Y: y, train_states: True})
