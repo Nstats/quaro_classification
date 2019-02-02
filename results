@@ -1,5 +1,9 @@
+max_seq_len: bigger are better, but cost more time.
+lr:0.0005 seems good.
+dp_keep_prob:small dp tends to stable results but harder to train.
+
 using smoothing 0.8 & assume test set have the same distribution with train&dev set:
-no_preprocessed                                             score_dev       score in test
+no_preprocessed                                             score_dev   score in test
 max_q_len:25
 --dp_keep_prob 0.2 --ratio_1_0 2 & n_iteration=10000        0.          0.661
 --dp_keep_prob 0.5 --ratio_1_0 1 & n_iteration=8000         0.          0.658

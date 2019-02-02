@@ -27,7 +27,7 @@ test_dir = './data/test.csv'
 embedding_dir = './data/glove.840B.300d.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
-    './tensorboard/CNN/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)+'_lr'+str(FLAGS.lr)
+    './tensorboard/purernn/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)+'_lr'+str(FLAGS.lr)
 
 
 rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
@@ -191,7 +191,7 @@ def get_cell(rnn_type, hidden_size, scope, layer_num, dp_keep_prob, training):
         cells = tc.rnn.MultiRNNCell(cells, state_is_tuple=True)
     return cells
 
-'''
+
 def transformer_self_attention(inputs, att_keep_prob, is_train=True):
     if is_train:
         d_inputs = tf.nn.dropout(inputs, keep_prob=att_keep_prob,
@@ -202,14 +202,13 @@ def transformer_self_attention(inputs, att_keep_prob, is_train=True):
 
     inputs_ = tf.nn.relu(tf.layers.dense(d_inputs, rnn_hidden_size, use_bias=True))
     outputs = tf.matmul(inputs_, tf.transpose(inputs_, [0, 2, 1])) / (rnn_hidden_size ** 0.5)
-    # zeros = 0.0 * outputs
     zeros = tf.zeros_like(outputs)
-    att_weights = tf.nn.softmax(tf.where(~tf.equal(outputs, zeros), outputs, zeros-float('inf')))
+    # att_weights = tf.nn.softmax(tf.where(~tf.equal(outputs, zeros), outputs, zeros-float('inf')))
+    att_weights = tf.nn.softmax(outputs, -1)
     outputs = tf.matmul(att_weights, inputs)
     res = tf.concat([inputs, outputs], axis=-1)
     # res = inputs + outputs
     return res
-'''
 
 
 def bn(inputs, scope, epsilon=1e-5):
@@ -254,7 +253,6 @@ def main(_):
         train_df, dev_df = preprocessing(train_dir, rectify_dict)
         embedding_index = get_embedding_index(embedding_dir)
 
-    '''
     with tf.variable_scope('BiRNN_encoder'):
         rnn_cell_fw = get_cell('gru', rnn_hidden_size, 'rnn_cell_fw',
                                rnn_layer_num, dp_keep_prob=FLAGS.dp_keep_prob, training=train_states)
@@ -266,42 +264,15 @@ def main(_):
         # states:((fw[None, rnn_hidden_size]*2), (bw[None, rnn_hidden_size]*2))
         # outputs = tf.concat(outputs, 2)  # [None, FLAGS.q_max_len, 2*rnn_hidden_size]
         useful_states = tf.concat((states[0][-1], states[1][-1]), -1)  # [None, 2*rnn_hidden_size]
-    '''
-
-    with tf.variable_scope('CNN_encoder'):
-        filter_sizes = [3, 4, 5]
-        num_filters = 2
-        pooled_outputs = []
-        x_image = tf.reshape(X, [-1, FLAGS.q_max_len, word_vec_len, 1])
-        for i, filter_size in enumerate(filter_sizes):
-            with tf.name_scope("conv-maxpool-%s" % filter_size):
-                # Convolution Layer
-                filter_shape = [filter_size, word_vec_len, 1, num_filters]
-                W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
-                conv = tf.nn.conv2d(x_image, W, strides=[1, 1, 1, 1], padding="VALID", name="conv")
-                # Apply nonlinearity
-                h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
-                # Max-pooling over the outputs
-                pooled = tf.nn.max_pool(h, ksize=[1, FLAGS.q_max_len - filter_size + 1, 1, 1], strides=[1, 1, 1, 1],
-                                        padding='VALID', name="pool")
-                pooled_outputs.append(pooled)
-        # Combine all the pooled features
-        num_filters_total = num_filters * len(filter_sizes)
-        h_pool = tf.concat(pooled_outputs, 3)
-        h_pool_flat = tf.reshape(h_pool, [-1, num_filters_total])
-        # dropout
-        h_drop = tf.nn.dropout(h_pool_flat, FLAGS.dp_keep_prob)
-
 
     '''
     with tf.variable_scope('self_attention'):
         # Self Attention in Transformer with concat.
-        fusion = transformer_self_attention(outputs, att_keep_prob)  # [None, FLAGS.q_max_len, 4*rnn_hidden_size]
-        fusion_rnn_fw = get_cell('gru', rnn_hidden_size, 'fusion_rnn_fw', layer_num=1,
-                                 dropout_keep_prob=rnn_dropout_keep_prob, is_train=True)
-        fusion_rnn_bw = get_cell('gru', rnn_hidden_size, 'fusion_rnn_bw', layer_num=1,
-                                 dropout_keep_prob=rnn_dropout_keep_prob, is_train=True)
+        fusion = transformer_self_attention(outputs, FLAGS.dp_keep_prob)  # [None, FLAGS.q_max_len, 4*rnn_hidden_size]
+        fusion_rnn_fw = get_cell('gru', rnn_hidden_size, 'fusion_rnn_fw', rnn_layer_num,
+                                 dp_keep_prob=FLAGS.dp_keep_prob, training=train_states)
+        fusion_rnn_bw = get_cell('gru', rnn_hidden_size, 'fusion_rnn_bw', rnn_layer_num,
+                                 dp_keep_prob=FLAGS.dp_keep_prob, training=train_states)
         _, fusion_final = tf.nn.bidirectional_dynamic_rnn(
             fusion_rnn_fw, fusion_rnn_bw, fusion, sequence_length=X_valid, dtype=tf.float32)
         fusion_final_states = tf.concat((fusion_final[0][0], fusion_final[1][0]), -1)
@@ -310,9 +281,7 @@ def main(_):
 
     with tf.variable_scope('MLP'):
         # MLP with BN
-
-        # layer1 = bn(useful_states, 'MLP_layer1') # use BiLSTM
-        layer1 = bn(h_drop, 'MLP_layer1') # use CNN
+        layer1 = bn(useful_states, 'MLP_layer1')
         layer1_d = tf.layers.dropout(layer1, 1-FLAGS.dp_keep_prob, training=train_states)
         logits2 = tf.layers.dense(layer1_d, MLP_hidden_layer, kernel_initializer=tf.truncated_normal_initializer())
         logits2_bn = bn(logits2, 'MLP_layer2')
@@ -347,7 +316,7 @@ def main(_):
         sess.run(tf.global_variables_initializer())
 
         for i in range(n_iteration):
-            print('Now train iteration {0}'.format(i+1))
+            # print('Now train iteration {0}'.format(i+1))
             x, x_valid, y = get_batch_data(train_df, batch_size, embedding_index)
             _ = sess.run(optimizer,
                          feed_dict={X: x, X_valid: x_valid, Y: y, train_states: True})
