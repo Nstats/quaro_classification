@@ -262,6 +262,7 @@ def main(_):
             rnn_cell_fw, rnn_cell_bw, X, sequence_length=X_valid, dtype=tf.float32)
         # outputs:([None, FLAGS.q_max_len, rnn_hidden_size], [None, FLAGS.q_max_len, rnn_hidden_size])
         # states:((fw[None, rnn_hidden_size]*2), (bw[None, rnn_hidden_size]*2))
+
         # outputs = tf.concat(outputs, 2)  # [None, FLAGS.q_max_len, 2*rnn_hidden_size]
         useful_states = tf.concat((states[0][-1], states[1][-1]), -1)  # [None, 2*rnn_hidden_size]
 
