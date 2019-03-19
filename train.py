@@ -9,7 +9,7 @@ import re
 start_time = time.time()
 
 batch_size = 512
-n_iteration = 15000
+n_iteration = 10
 word_vec_len = 300
 rnn_hidden_size = 150
 rnn_layer_num = 2
@@ -22,12 +22,12 @@ tf.flags.DEFINE_integer('ratio_1_0', 2, 'label_1*ratio_1_0 : label_0 in training
 tf.flags.DEFINE_float('lr', 0.001, 'learning rate')
 FLAGS = tf.flags.FLAGS
 
-train_dir = './data/train.csv'
-test_dir = './data/test.csv'
-embedding_dir = './data/glove.840B.300d.txt'
+train_dir = './data/train_example.csv'
+test_dir = './data/test_example.csv'
+embedding_dir = './data/glove.840B.300d_example.txt'
 # size of glove: 2196017
 tensorboard_log_dir = \
-    './tensorboard/purernn/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)+'_lr'+str(FLAGS.lr)
+    './tensorboard/birnn_with_att/ql'+str(FLAGS.q_max_len)+'_dp_prob'+str(FLAGS.dp_keep_prob)
 
 
 rectify_dict = {'Blockchain': 'blockchain', 'b.SC': 'b.sc', 'Cryptocurrency': 'cryptocurrency',
@@ -211,6 +211,29 @@ def transformer_self_attention(inputs, att_keep_prob, is_train=True):
     return res
 
 
+def attend_pooling(pooling_vectors, ref_vector, hidden_size, scope=None):
+    """
+    Applies attend pooling to a set of vectors according to a reference vector.
+    Args:
+        pooling_vectors: the vectors to pool
+        ref_vector: the reference vector
+        hidden_size: the hidden size for attention function
+        scope: score name
+    Returns:
+        the pooled vector
+    """
+    with tf.variable_scope(scope or 'attend_pooling'):
+        U = tf.tanh(tc.layers.fully_connected(pooling_vectors, num_outputs=hidden_size,
+                                              activation_fn=None, biases_initializer=None)
+                    + tc.layers.fully_connected(tf.expand_dims(ref_vector, 1),
+                                                num_outputs=hidden_size,
+                                                activation_fn=None))
+        logits = tc.layers.fully_connected(U, num_outputs=1, activation_fn=None)
+        scores = tf.nn.softmax(logits, 1)
+        pooled_vector = tf.reduce_sum(pooling_vectors * scores, axis=1)
+    return pooled_vector
+
+
 def bn(inputs, scope, epsilon=1e-5):
     with tf.variable_scope(scope):
         m, v = tf.nn.moments(inputs, -1, keep_dims=True)
@@ -263,8 +286,8 @@ def main(_):
         # outputs:([None, FLAGS.q_max_len, rnn_hidden_size], [None, FLAGS.q_max_len, rnn_hidden_size])
         # states:((fw[None, rnn_hidden_size]*2), (bw[None, rnn_hidden_size]*2))
 
-        # outputs = tf.concat(outputs, 2)  # [None, FLAGS.q_max_len, 2*rnn_hidden_size]
-        useful_states = tf.concat((states[0][-1], states[1][-1]), -1)  # [None, 2*rnn_hidden_size]
+        outputs = tf.concat(outputs, 2)  # [None, FLAGS.q_max_len, 2*rnn_hidden_size]
+        # useful_states = tf.concat((states[0][-1], states[1][-1]), -1)  # [None, 2*rnn_hidden_size]
 
     '''
     with tf.variable_scope('self_attention'):
@@ -280,9 +303,14 @@ def main(_):
         # [None, 2*rnn_hidden_size]
     '''
 
+    with tf.variable_scope('self_attention'):
+        ref_vec = tf.get_variable('ref_vec', [1, 2*rnn_hidden_size], tf.float32, tf.truncated_normal_initializer(),
+                                  trainable=True)
+        attend_vec = attend_pooling(outputs, ref_vec, 2*rnn_hidden_size, 'attend_poolinig')  # [None, max_seq_len]
+
     with tf.variable_scope('MLP'):
         # MLP with BN
-        layer1 = bn(useful_states, 'MLP_layer1')
+        layer1 = bn(attend_vec, 'MLP_layer1')
         layer1_d = tf.layers.dropout(layer1, 1-FLAGS.dp_keep_prob, training=train_states)
         logits2 = tf.layers.dense(layer1_d, MLP_hidden_layer, kernel_initializer=tf.truncated_normal_initializer())
         logits2_bn = bn(logits2, 'MLP_layer2')
@@ -295,6 +323,7 @@ def main(_):
 
     recall, precision, accu, f1 = score(logits=logits3, targets=Y)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.stop_gradient(Y), logits=logits3))
+    # loss = -tf.reduce_mean(recall+precision)
     optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.lr).minimize(loss)
 
     with tf.name_scope('summaries'):
@@ -333,7 +362,7 @@ def main(_):
         summary_writer.close()
         print('time used before sess is {0}'.format(time_before_sess - start_time))
         print(tensorboard_log_dir+' training completed.')
-        print('training time used= {0}'.format(time.time()-time_before_sess))
+        print('training time used= {0}'.format(int((time.time()-time_before_sess)/60))+'min'+'\n'+'\n')
 
         # now predict for the test set.
         # df_test, _ = preprocessing(test_dir, False)
