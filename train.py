@@ -269,7 +269,7 @@ def main(_):
         # thisisalink = tf.get_variable('thisisalink', [word_vec_len],
         #                               tf.float32, tf.contrib.layers.xavier_initializer())
         # assign_to_variable_dict = {'thisisaformula': thisisaformula, 'thisisalink': thisisalink}
-        train_states = tf.placeholder(dtype=tf.bool)
+        train_states = tf.placeholder(dtype=tf.bool, name='train_states')
         X = tf.placeholder(dtype=tf.float32, shape=[None, FLAGS.q_max_len, word_vec_len], name='X')
         X_valid = tf.placeholder(dtype=tf.int32, shape=[None], name='X_valid')
         Y = tf.placeholder(dtype=tf.float32, shape=[None, 2], name='Y')
